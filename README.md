@@ -4,6 +4,7 @@ track-changes-sharelatex
 An API for converting raw editor updates into a compressed and browseable history.
 
 [![Build Status](https://travis-ci.org/sharelatex/track-changes-sharelatex.png?branch=master)](https://travis-ci.org/sharelatex/track-changes-sharelatex)
+[![Code Climate](https://codeclimate.com/github/heukirne/track-changes-sharelatex/badges/gpa.svg)](https://codeclimate.com/github/heukirne/track-changes-sharelatex)
 
 License
 -------
