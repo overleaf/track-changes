@@ -2,6 +2,6 @@ engines:
   coffeelint:
     enabled: true
 
- ratings:
+ratings:
    paths:
    - "**.coffee"
