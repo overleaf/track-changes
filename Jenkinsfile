@@ -2,7 +2,7 @@ pipeline {
 
   agent {
     docker {
-      image 'node:4.2.1'
+      image 'sharelatex/node:0.10.9'
       args "-v /var/lib/jenkins/.npm:/tmp/.npm"
     }
   }
