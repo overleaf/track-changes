@@ -28,8 +28,6 @@ pipeline {
       steps {
         sh 'rm -fr node_modules'
         sh 'npm install'
-        sh 'npm rebuild'
-        sh 'npm install --quiet grunt-cli'
       }
     }
     stage('Compile') {
