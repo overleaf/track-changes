@@ -80,7 +80,7 @@ app.get "/check_lock", HttpController.checkLock
 
 app.get "/health_check",  HttpController.healthCheck
 
-profiler = require "v8-profiler"
+profiler = require "v8-profiler-node8"
 app.get "/profile", (req, res) ->
 	time = parseInt(req.query.time || "1000")
 	profiler.startProfiling("test")
