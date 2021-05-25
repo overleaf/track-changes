@@ -1,3 +1,9 @@
+/* eslint-disable
+    camelcase,
+    handle-callback-err,
+*/
+// TODO: This file was created by bulk-decaffeinate.
+// Fix any style issues and re-enable lint.
 /*
  * decaffeinate suggestions:
  * DS101: Remove unnecessary use of Array.from
@@ -21,7 +27,7 @@ const user_id = ObjectId().toString();
 const updates = (() => {
 	let asc, end;
 	const result = [];
-	for (i = 1, end = NO_OF_UPDATES, asc = 1 <= end; asc ? i <= end : i >= end; asc ? i++ : i--) {
+	for (i = 1, end = NO_OF_UPDATES, asc = end >= 1; asc ? i <= end : i >= end; asc ? i++ : i--) {
 		result.push({
 			op: { i: "a", p: 0 },
 			v: i,
@@ -36,7 +42,7 @@ const jsonUpdates = (Array.from(updates).map((u) => JSON.stringify(u)));
 const doc_ids = ((() => {
 	let asc1, end1;
 	const result1 = [];
-	for (i = 1, end1 = NO_OF_DOCS, asc1 = 1 <= end1; asc1 ? i <= end1 : i >= end1; asc1 ? i++ : i--) {
+	for (i = 1, end1 = NO_OF_DOCS, asc1 = end1 >= 1; asc1 ? i <= end1 : i >= end1; asc1 ? i++ : i--) {
 		result1.push(ObjectId().toString());
 	}
 	return result1;
@@ -47,7 +53,7 @@ const populateRedis = function(callback) {
 	console.log("Populating Redis queues...");
 
 	const jobs = [];
-	for (let doc_id of Array.from(doc_ids)) {
+	for (const doc_id of Array.from(doc_ids)) {
 		((doc_id => jobs.push(callback => rclient.rpush(`UncompressedHistoryOps:${doc_id}`, ...Array.from(jsonUpdates), callback))))(doc_id);
 	}
 	return async.series(jobs, function(error) {
@@ -62,7 +68,7 @@ const flushDocs = function(callback) {
 	console.log("Flushing docs...");
 	let inProgress = 0;
 	const jobs = [];
-	for (let doc_id of Array.from(doc_ids)) {
+	for (const doc_id of Array.from(doc_ids)) {
 		((doc_id => jobs.push(function(callback) {
             inProgress = inProgress + 1;
             return request.post(`http://localhost:3014/doc/${doc_id}/flush`, function(error) {

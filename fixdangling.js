@@ -1,3 +1,9 @@
+/* eslint-disable
+    camelcase,
+    no-unused-vars,
+*/
+// TODO: This file was created by bulk-decaffeinate.
+// Fix any style issues and re-enable lint.
 /*
  * decaffeinate suggestions:
  * DS102: Remove unnecessary code created because of implicit returns
@@ -38,7 +44,7 @@ let success = 0;
 
 const fixDangling = (doc_id, callback) => // look up project id from doc id
 db.docs.find({_id:ObjectId(doc_id)}, {project_id:1}, function(err, result) {
-    //console.log "doc_id", doc_id, "err", err, "result", result
+    // console.log "doc_id", doc_id, "err", err, "result", result
     if (err != null) {
         errored++;
         return callback();
