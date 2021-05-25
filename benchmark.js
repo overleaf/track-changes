@@ -1,56 +1,89 @@
-request = require "request"
-rclient = require("redis").createClient()
-async = require "async"
-{ObjectId} = require("./app/js/mongojs")
+/*
+ * decaffeinate suggestions:
+ * DS101: Remove unnecessary use of Array.from
+ * DS102: Remove unnecessary code created because of implicit returns
+ * DS202: Simplify dynamic range loops
+ * DS205: Consider reworking code to avoid use of IIFEs
+ * DS207: Consider shorter variations of null checks
+ * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
+ */
+let i;
+const request = require("request");
+const rclient = require("redis").createClient();
+const async = require("async");
+const {ObjectId} = require("./app/js/mongojs");
 
-NO_OF_DOCS = 100
-NO_OF_UPDATES = 200
+const NO_OF_DOCS = 100;
+const NO_OF_UPDATES = 200;
 
-user_id = ObjectId().toString()
+const user_id = ObjectId().toString();
 
-updates = for i in [1..NO_OF_UPDATES]
-	{
-		op: { i: "a", p: 0 }
-		v: i
-		meta: ts: new Date(), user_id: user_id
+const updates = (() => {
+	let asc, end;
+	const result = [];
+	for (i = 1, end = NO_OF_UPDATES, asc = 1 <= end; asc ? i <= end : i >= end; asc ? i++ : i--) {
+		result.push({
+			op: { i: "a", p: 0 },
+			v: i,
+			meta: { ts: new Date(), user_id
+		}
+		});
 	}
-jsonUpdates = (JSON.stringify(u) for u in updates)
+	return result;
+})();
+const jsonUpdates = (Array.from(updates).map((u) => JSON.stringify(u)));
 
-doc_ids = (ObjectId().toString() for i in [1..NO_OF_DOCS])
+const doc_ids = ((() => {
+	let asc1, end1;
+	const result1 = [];
+	for (i = 1, end1 = NO_OF_DOCS, asc1 = 1 <= end1; asc1 ? i <= end1 : i >= end1; asc1 ? i++ : i--) {
+		result1.push(ObjectId().toString());
+	}
+	return result1;
+})());
 
-populateRedis = (callback = (error) ->) ->
-	console.log "Populating Redis queues..."
+const populateRedis = function(callback) {
+	if (callback == null) { callback = function(error) {}; }
+	console.log("Populating Redis queues...");
 
-	jobs = []
-	for doc_id in doc_ids
-		do (doc_id) ->
-			jobs.push (callback) ->
-				rclient.rpush "UncompressedHistoryOps:#{doc_id}", jsonUpdates..., callback
-	async.series jobs, (error) ->
-		return callback(error) if error?
-		console.log "Done."
-		callback()
+	const jobs = [];
+	for (let doc_id of Array.from(doc_ids)) {
+		((doc_id => jobs.push(callback => rclient.rpush(`UncompressedHistoryOps:${doc_id}`, ...Array.from(jsonUpdates), callback))))(doc_id);
+	}
+	return async.series(jobs, function(error) {
+		if (error != null) { return callback(error); }
+		console.log("Done.");
+		return callback();
+	});
+};
 
-flushDocs = (callback = (error) ->) ->
-	console.log "Flushing docs..."
-	inProgress = 0
-	jobs = []
-	for doc_id in doc_ids
-		do (doc_id) ->
-			jobs.push (callback) ->
-				inProgress = inProgress + 1
-				request.post "http://localhost:3014/doc/#{doc_id}/flush", (error) ->
-					inProgress = inProgress - 1
-					console.log Date.now(), "In progress: #{inProgress}"
-					callback(error)
-	async.parallel jobs, (error) ->
-		return callback(error) if error?
-		console.log "Done."
-		callback()
+const flushDocs = function(callback) {
+	if (callback == null) { callback = function(error) {}; }
+	console.log("Flushing docs...");
+	let inProgress = 0;
+	const jobs = [];
+	for (let doc_id of Array.from(doc_ids)) {
+		((doc_id => jobs.push(function(callback) {
+            inProgress = inProgress + 1;
+            return request.post(`http://localhost:3014/doc/${doc_id}/flush`, function(error) {
+                inProgress = inProgress - 1;
+                console.log(Date.now(), `In progress: ${inProgress}`);
+                return callback(error);
+            });
+        })))(doc_id);
+	}
+	return async.parallel(jobs, function(error) {
+		if (error != null) { return callback(error); }
+		console.log("Done.");
+		return callback();
+	});
+};
 
-populateRedis (error) ->
-	throw error if error?
-	flushDocs (error) ->
-		throw error if error?
-		process.exit(0)
+populateRedis(function(error) {
+	if (error != null) { throw error; }
+	return flushDocs(function(error) {
+		if (error != null) { throw error; }
+		return process.exit(0);
+	});
+});
 
