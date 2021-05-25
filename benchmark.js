@@ -2,17 +2,6 @@
     camelcase,
     handle-callback-err,
 */
-// TODO: This file was created by bulk-decaffeinate.
-// Fix any style issues and re-enable lint.
-/*
- * decaffeinate suggestions:
- * DS101: Remove unnecessary use of Array.from
- * DS102: Remove unnecessary code created because of implicit returns
- * DS202: Simplify dynamic range loops
- * DS205: Consider reworking code to avoid use of IIFEs
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
 let i
 const request = require('request')
 const rclient = require('redis').createClient()
@@ -73,7 +62,7 @@ const populateRedis = function (callback) {
       ))(doc_id)
   }
   return async.series(jobs, function (error) {
-    if (error != null) {
+    if (error) {
       return callback(error)
     }
     console.log('Done.')
@@ -88,7 +77,7 @@ const flushDocs = function (callback) {
   console.log('Flushing docs...')
   let inProgress = 0
   const jobs = []
-  for (const doc_id of Array.from(doc_ids)) {
+  for (const doc_id of doc_ids) {
     ;((doc_id) =>
       jobs.push(function (callback) {
         inProgress = inProgress + 1
@@ -103,7 +92,7 @@ const flushDocs = function (callback) {
       }))(doc_id)
   }
   return async.parallel(jobs, function (error) {
-    if (error != null) {
+    if (error) {
       return callback(error)
     }
     console.log('Done.')
@@ -112,11 +101,11 @@ const flushDocs = function (callback) {
 }
 
 populateRedis(function (error) {
-  if (error != null) {
+  if (error) {
     throw error
   }
   return flushDocs(function (error) {
-    if (error != null) {
+    if (error) {
       throw error
     }
     return process.exit(0)

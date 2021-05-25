@@ -1,25 +1,11 @@
-/* eslint-disable
-    camelcase,
-    no-unused-vars,
-*/
-// TODO: This file was created by bulk-decaffeinate.
-// Fix any style issues and re-enable lint.
-/*
- * decaffeinate suggestions:
- * DS102: Remove unnecessary code created because of implicit returns
- * DS207: Consider shorter variations of null checks
- * Full docs: https://github.com/decaffeinate/decaffeinate/blob/master/docs/suggestions.md
- */
+/* eslint-disable camelcase */
 const Settings = require('settings-sharelatex')
-const logger = require('logger-sharelatex')
-const TrackChangesLogger = logger.initialize('track-changes').logger
 const async = require('async')
 const fs = require('fs')
 const request = require('request')
 const cli = require('cli')
 
 const mongojs = require('mongojs')
-const bson = require('bson')
 const db = mongojs(Settings.mongo.url, ['docs'])
 const { ObjectId } = mongojs
 
@@ -61,7 +47,7 @@ const fixDangling = (
     console.log('found project_id', project_id, 'for doc_id', doc_id)
     const url = `http://localhost:${options.port}/project/${project_id}/doc/${doc_id}/flush`
     if (options.force) {
-      return request.post(url, function (err, response, body) {
+      return request.post(url, function (err) {
         if (err != null) {
           errored++
         } else {
