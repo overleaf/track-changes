@@ -88,3 +88,21 @@ module.exports = DocumentUpdaterManager = {
     )
   }
 }
+
+module.exports.promises = {
+  getDocument: (project_id, doc_id) => {
+    return new Promise((resolve, reject) => {
+      DocumentUpdaterManager.getDocument(
+        project_id,
+        doc_id,
+        (err, content, version) => {
+          if (err) {
+            reject(err)
+          } else {
+            resolve([content, version])
+          }
+        }
+      )
+    })
+  }
+}

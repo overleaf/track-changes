@@ -25,6 +25,7 @@ const MongoAWS = require('./MongoAWS')
 const Metrics = require('@overleaf/metrics')
 const ProjectIterator = require('./ProjectIterator')
 const Settings = require('settings-sharelatex')
+const util = require('util')
 const keys = Settings.redis.lock.key_schema
 
 // Sharejs operations are stored in a 'pack' object
@@ -421,6 +422,41 @@ module.exports = PackManager = {
           }
         )
       })
+  },
+
+  findAllDocsInProject(project_id, callback) {
+    const docIdSet = new Set()
+    async.series(
+      [
+        (cb) => {
+          db.docHistory
+            .find(
+              { project_id: ObjectId(project_id) },
+              { projection: { pack: false } }
+            )
+            .toArray((err, packs) => {
+              packs.forEach((pack) => {
+                docIdSet.add(pack.doc_id)
+              })
+              return cb()
+            })
+        },
+        (cb) => {
+          db.docHistoryIndex
+            .find({ project_id: ObjectId(project_id) })
+            .toArray((err, indexes) => {
+              indexes.forEach((index) => {
+                docIdSet.add(index._id)
+              })
+              return cb()
+            })
+        }
+      ],
+      (err) => {
+        if (err) return callback(err)
+        callback(null, [...docIdSet])
+      }
+    )
   },
 
   // Retrieve all changes across a project
@@ -1148,6 +1184,11 @@ module.exports = PackManager = {
       }
     )
   }
+}
+
+module.exports.promises = {
+  getOpsByVersionRange: util.promisify(PackManager.getOpsByVersionRange),
+  findAllDocsInProject: util.promisify(PackManager.findAllDocsInProject)
 }
 
 //	_getOneDayInFutureWithRandomDelay: ->
