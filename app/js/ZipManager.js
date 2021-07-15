@@ -8,14 +8,27 @@ const util = require('util')
 
 async function rewindDoc(projectId, docId, zipfile) {
   logger.log({ projectId, docId }, 'rewinding document')
+
   const [
     finalContent,
     version
   ] = await DocumentUpdaterManager.promises.getDocument(projectId, docId)
-  zipfile.addBuffer(
-    Buffer.from(finalContent),
-    `${docId.toString()}/content/end/${version}`
-  )
+
+  const id = docId.toString()
+
+  const contentEndPath = `${id}/content/end/${version}`
+  zipfile.addBuffer(Buffer.from(finalContent), contentEndPath)
+
+  const metadata = {
+    id,
+    version,
+    content: {
+      end: {
+        path: contentEndPath,
+        version
+      }
+    }
+  }
 
   // now rewind content
   // TODO: retrieve updates incrementally
@@ -29,12 +42,12 @@ async function rewindDoc(projectId, docId, zipfile) {
   let content = finalContent
   let v = version
 
-  for (const update of updates) {
-    zipfile.addBuffer(
-      Buffer.from(JSON.stringify(update)),
-      `${docId.toString()}/updates/${update.v}`,
-      { mtime: new Date(update.meta.start_ts) }
-    )
+  metadata.updates = updates.map((update) => {
+    const updatePath = `${id}/updates/${update.v}`
+
+    zipfile.addBuffer(Buffer.from(JSON.stringify(update)), updatePath, {
+      mtime: new Date(update.meta.start_ts)
+    })
     try {
       content = DiffGenerator.rewindUpdate(content, update)
       v = update.v
@@ -42,19 +55,37 @@ async function rewindDoc(projectId, docId, zipfile) {
       e.attempted_update = update // keep a record of the attempted update
       logger.error({ projectId, docId, err: e }, 'rewind error')
     }
+
+    return {
+      path: updatePath,
+      version: update.v,
+      ts: update.meta.start_ts
+    }
+  })
+
+  const contentStartPath = `${id}/content/start/${v}`
+  zipfile.addBuffer(Buffer.from(content), contentStartPath)
+
+  metadata.content.start = {
+    path: contentStartPath,
+    version: v
   }
-  zipfile.addBuffer(
-    Buffer.from(content),
-    `${docId.toString()}/content/start/${v}`
-  )
+
+  return metadata
 }
 
 async function generateZip(projectId, zipfile) {
   await UpdatesManager.promises.processUncompressedUpdatesForProject(projectId)
   const docIds = await PackManager.promises.findAllDocsInProject(projectId)
+  const manifest = { projectId, docs: [] }
   for (const docId of docIds) {
-    await rewindDoc(projectId, docId, zipfile)
+    const doc = await rewindDoc(projectId, docId, zipfile)
+    manifest.docs.push(doc)
   }
+  zipfile.addBuffer(
+    Buffer.from(JSON.stringify(manifest, null, 2)),
+    'manifest.json'
+  )
   zipfile.end()
 }
 
