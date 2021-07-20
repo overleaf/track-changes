@@ -104,5 +104,5 @@ module.exports.promises = {
         }
       )
     })
-  }
+  },
 }

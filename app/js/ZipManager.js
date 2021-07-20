@@ -9,10 +9,8 @@ const util = require('util')
 async function rewindDoc(projectId, docId, zipfile) {
   logger.log({ projectId, docId }, 'rewinding document')
 
-  const [
-    finalContent,
-    version
-  ] = await DocumentUpdaterManager.promises.getDocument(projectId, docId)
+  const [finalContent, version] =
+    await DocumentUpdaterManager.promises.getDocument(projectId, docId)
 
   const id = docId.toString()
 
@@ -25,9 +23,9 @@ async function rewindDoc(projectId, docId, zipfile) {
     content: {
       end: {
         path: contentEndPath,
-        version
-      }
-    }
+        version,
+      },
+    },
   }
 
   // now rewind content
@@ -42,11 +40,11 @@ async function rewindDoc(projectId, docId, zipfile) {
   let content = finalContent
   let v = version
 
-  metadata.updates = updates.map((update) => {
+  metadata.updates = updates.map(update => {
     const updatePath = `${id}/updates/${update.v}`
 
     zipfile.addBuffer(Buffer.from(JSON.stringify(update)), updatePath, {
-      mtime: new Date(update.meta.start_ts)
+      mtime: new Date(update.meta.start_ts),
     })
     try {
       content = DiffGenerator.rewindUpdate(content, update)
@@ -59,7 +57,7 @@ async function rewindDoc(projectId, docId, zipfile) {
     return {
       path: updatePath,
       version: update.v,
-      ts: update.meta.start_ts
+      ts: update.meta.start_ts,
     }
   })
 
@@ -68,7 +66,7 @@ async function rewindDoc(projectId, docId, zipfile) {
 
   metadata.content.start = {
     path: contentStartPath,
-    version: v
+    version: v,
   }
 
   return metadata
@@ -96,5 +94,5 @@ async function exportProject(projectId) {
 }
 
 module.exports = {
-  exportProject: util.callbackify(exportProject)
+  exportProject: util.callbackify(exportProject),
 }

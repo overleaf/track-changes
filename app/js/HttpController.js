@@ -209,7 +209,7 @@ module.exports = HttpController = {
     const { project_id } = req.params
     logger.log({ project_id }, 'exporting project history as zip file')
     ZipManager.exportProject(project_id, function (err, outputStream) {
-      pipeline(outputStream, res, (err) => {
+      pipeline(outputStream, res, err => {
         if (err) logger.error({ project_id, err }, 'zip pipeline error')
       })
     })

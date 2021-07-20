@@ -885,7 +885,7 @@ module.exports = UpdatesManager = {
 module.exports.promises = {
   processUncompressedUpdatesForProject: util.promisify(
     UpdatesManager.processUncompressedUpdatesForProject
-  )
+  ),
 }
 
 function __guard__(value, transform) {
