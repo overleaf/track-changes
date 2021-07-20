@@ -90,6 +90,8 @@ module.exports = DocumentUpdaterManager = {
 }
 
 module.exports.promises = {
+  // getDocument returns two arguments so we can't use util.promisfy, which only handles a single argument, we need
+  // to treat this it as a special case.
   getDocument: (project_id, doc_id) => {
     return new Promise((resolve, reject) => {
       DocumentUpdaterManager.getDocument(
