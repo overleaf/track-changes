@@ -58,6 +58,7 @@ async function rewindDoc(projectId, docId, zipfile) {
       path: updatePath,
       version: update.v,
       ts: update.meta.start_ts,
+      doc_length: content.length
     }
   })
 
