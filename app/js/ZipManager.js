@@ -2,15 +2,47 @@ const logger = require('logger-sharelatex')
 const UpdatesManager = require('./UpdatesManager')
 const DiffGenerator = require('./DiffGenerator')
 const DocumentUpdaterManager = require('./DocumentUpdaterManager')
+const DocstoreManager = require('./DocstoreManager')
 const PackManager = require('./PackManager')
 const yazl = require('yazl')
 const util = require('util')
 
+// look in docstore or docupdater for the latest version of the document
+async function getFinalContent(projectId, docId, lastUpdateVersion) {
+  const [docstoreContent, docstoreVersion] =
+    await DocstoreManager.promises.peekDocument(projectId, docId)
+
+  // if docstore is out of date, check for a newer version in docupdater
+  // and return that instead
+  if (docstoreVersion <= lastUpdateVersion) {
+    const [docupdaterContent, docupdaterVersion] =
+      await DocumentUpdaterManager.promises.peekDocument(projectId, docId)
+    if (docupdaterVersion > docstoreVersion) {
+      return [docupdaterContent, docupdaterVersion]
+    }
+  }
+
+  return [docstoreContent, docstoreVersion]
+}
+
 async function rewindDoc(projectId, docId, zipfile) {
   logger.log({ projectId, docId }, 'rewinding document')
 
-  const [finalContent, version] =
-    await DocumentUpdaterManager.promises.getDocument(projectId, docId)
+  // Prepare to rewind content
+  // TODO: retrieve updates incrementally
+  const updates = await PackManager.promises.getOpsByVersionRange(
+    projectId,
+    docId,
+    -1,
+    null
+  )
+  const lastUpdateVersion = updates[0].v
+
+  const [finalContent, version] = await getFinalContent(
+    projectId,
+    docId,
+    lastUpdateVersion
+  )
 
   const id = docId.toString()
 
@@ -27,15 +59,6 @@ async function rewindDoc(projectId, docId, zipfile) {
       },
     },
   }
-
-  // now rewind content
-  // TODO: retrieve updates incrementally
-  const updates = await PackManager.promises.getOpsByVersionRange(
-    projectId,
-    docId,
-    -1,
-    version
-  )
 
   let content = finalContent
   let v = version
@@ -58,7 +81,7 @@ async function rewindDoc(projectId, docId, zipfile) {
       path: updatePath,
       version: update.v,
       ts: update.meta.start_ts,
-      doc_length: content.length
+      doc_length: content.length,
     }
   })
 

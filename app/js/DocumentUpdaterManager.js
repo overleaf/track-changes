@@ -17,15 +17,20 @@ const logger = require('logger-sharelatex')
 const Settings = require('@overleaf/settings')
 
 module.exports = DocumentUpdaterManager = {
-  getDocument(project_id, doc_id, callback) {
+  _requestDocument(project_id, doc_id, url, callback) {
     if (callback == null) {
       callback = function (error, content, version) {}
     }
-    const url = `${Settings.apis.documentupdater.url}/project/${project_id}/doc/${doc_id}`
+
     logger.log({ project_id, doc_id }, 'getting doc from document updater')
     return request.get(url, function (error, res, body) {
       if (error != null) {
         return callback(error)
+      }
+      if (res.statusCode === 404) {
+        // expected case, return undefined for doclines and version when doc not
+        // in docupdater
+        return callback(null, [])
       }
       if (res.statusCode >= 200 && res.statusCode < 300) {
         try {
@@ -50,6 +55,16 @@ module.exports = DocumentUpdaterManager = {
         return callback(error)
       }
     })
+  },
+
+  getDocument(project_id, doc_id, callback) {
+    const url = `${Settings.apis.documentupdater.url}/project/${project_id}/doc/${doc_id}`
+    DocumentUpdaterManager._requestDocument(project_id, doc_id, url, callback)
+  },
+
+  peekDocument(project_id, doc_id, callback) {
+    const url = `${Settings.apis.documentupdater.url}/project/${project_id}/doc/${doc_id}/peek`
+    DocumentUpdaterManager._requestDocument(project_id, doc_id, url, callback)
   },
 
   setDocument(project_id, doc_id, content, user_id, callback) {
@@ -90,11 +105,11 @@ module.exports = DocumentUpdaterManager = {
 }
 
 module.exports.promises = {
-  // getDocument returns two arguments so we can't use util.promisfy, which only handles a single argument, we need
+  // peekDocument returns two arguments so we can't use util.promisify, which only handles a single argument, we need
   // to treat this it as a special case.
-  getDocument: (project_id, doc_id) => {
+  peekDocument: (project_id, doc_id) => {
     return new Promise((resolve, reject) => {
-      DocumentUpdaterManager.getDocument(
+      DocumentUpdaterManager.peekDocument(
         project_id,
         doc_id,
         (err, content, version) => {
