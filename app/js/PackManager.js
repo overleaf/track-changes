@@ -24,6 +24,7 @@ const LockManager = require('./LockManager')
 const MongoAWS = require('./MongoAWS')
 const Metrics = require('@overleaf/metrics')
 const ProjectIterator = require('./ProjectIterator')
+const DocIterator = require('./DocIterator')
 const Settings = require('@overleaf/settings')
 const util = require('util')
 const keys = Settings.redis.lock.key_schema
@@ -521,6 +522,17 @@ module.exports = PackManager = {
           null,
           new ProjectIterator(allPacks, before, PackManager.getPackById)
         )
+      }
+    )
+  },
+
+  makeDocIterator(doc_id, callback) {
+    PackManager._findPacks(
+      { doc_id: ObjectId(doc_id) },
+      { v: -1 },
+      function (err, allPacks) {
+        if (err) return callback(err)
+        callback(null, new DocIterator(allPacks, PackManager.getPackById))
       }
     )
   },
@@ -1224,6 +1236,7 @@ module.exports = PackManager = {
 module.exports.promises = {
   getOpsByVersionRange: util.promisify(PackManager.getOpsByVersionRange),
   findAllDocsInProject: util.promisify(PackManager.findAllDocsInProject),
+  makeDocIterator: util.promisify(PackManager.makeDocIterator),
 }
 
 //	_getOneDayInFutureWithRandomDelay: ->

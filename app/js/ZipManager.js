@@ -8,7 +8,7 @@ const yazl = require('yazl')
 const util = require('util')
 
 // look in docstore or docupdater for the latest version of the document
-async function getFinalContent(projectId, docId, lastUpdateVersion) {
+async function getLatestContent(projectId, docId, lastUpdateVersion) {
   const [docstoreContent, docstoreVersion] =
     await DocstoreManager.promises.peekDocument(projectId, docId)
 
@@ -29,16 +29,16 @@ async function rewindDoc(projectId, docId, zipfile) {
   logger.log({ projectId, docId }, 'rewinding document')
 
   // Prepare to rewind content
-  // TODO: retrieve updates incrementally
-  const updates = await PackManager.promises.getOpsByVersionRange(
-    projectId,
-    docId,
-    -1,
-    null
-  )
-  const lastUpdateVersion = updates[0].v
 
-  const [finalContent, version] = await getFinalContent(
+  const docIterator = await PackManager.promises.makeDocIterator(docId)
+
+  const getUpdate = util.promisify(docIterator.next).bind(docIterator)
+
+  const lastUpdate = await getUpdate()
+
+  const lastUpdateVersion = lastUpdate.v
+
+  const [latestContent, version] = await getLatestContent(
     projectId,
     docId,
     lastUpdateVersion
@@ -47,7 +47,7 @@ async function rewindDoc(projectId, docId, zipfile) {
   const id = docId.toString()
 
   const contentEndPath = `${id}/content/end/${version}`
-  zipfile.addBuffer(Buffer.from(finalContent), contentEndPath)
+  zipfile.addBuffer(Buffer.from(latestContent), contentEndPath)
 
   const metadata = {
     id,
@@ -58,12 +58,14 @@ async function rewindDoc(projectId, docId, zipfile) {
         version,
       },
     },
+    updates: [],
   }
 
-  let content = finalContent
+  let content = latestContent
   let v = version
+  let update = lastUpdate
 
-  metadata.updates = updates.map(update => {
+  while (update) {
     const updatePath = `${id}/updates/${update.v}`
 
     zipfile.addBuffer(Buffer.from(JSON.stringify(update)), updatePath, {
@@ -77,13 +79,14 @@ async function rewindDoc(projectId, docId, zipfile) {
       logger.error({ projectId, docId, err: e }, 'rewind error')
     }
 
-    return {
+    metadata.updates.push({
       path: updatePath,
       version: update.v,
       ts: update.meta.start_ts,
       doc_length: content.length,
-    }
-  })
+    })
+    update = await getUpdate()
+  }
 
   const contentStartPath = `${id}/content/start/${v}`
   zipfile.addBuffer(Buffer.from(content), contentStartPath)
