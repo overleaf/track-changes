@@ -459,16 +459,24 @@ module.exports = PackManager = {
     )
   },
 
+  // rewrite any query using doc_id to use _id instead
+  // (because docHistoryIndex uses the doc_id)
+
+  _rewriteQueryForIndex(query) {
+    const indexQuery = _.omit(query, 'doc_id')
+    if ('doc_id' in query) {
+      indexQuery._id = query.doc_id
+    }
+    return indexQuery
+  },
+
   // Retrieve all changes across a project
 
-  makeProjectIterator(project_id, before, callback) {
+  _findPacks(query, sortKeys, callback) {
     // get all the docHistory Entries
     return db.docHistory
-      .find(
-        { project_id: ObjectId(project_id) },
-        { projection: { pack: false } }
-      )
-      .sort({ 'meta.end_ts': -1 })
+      .find(query, { projection: { pack: false } })
+      .sort(sortKeys)
       .toArray(function (err, packs) {
         let pack
         if (err != null) {
@@ -480,8 +488,9 @@ module.exports = PackManager = {
           allPacks.push(pack)
           seenIds[pack._id] = true
         }
+        const indexQuery = PackManager._rewriteQueryForIndex(query)
         return db.docHistoryIndex
-          .find({ project_id: ObjectId(project_id) })
+          .find(indexQuery)
           .toArray(function (err, indexes) {
             if (err != null) {
               return callback(err)
@@ -497,12 +506,23 @@ module.exports = PackManager = {
                 }
               }
             }
-            return callback(
-              null,
-              new ProjectIterator(allPacks, before, PackManager.getPackById)
-            )
+            return callback(null, allPacks)
           })
       })
+  },
+
+  makeProjectIterator(project_id, before, callback) {
+    PackManager._findPacks(
+      { project_id: ObjectId(project_id) },
+      { 'meta.end_ts': -1 },
+      function (err, allPacks) {
+        if (err) return callback(err)
+        callback(
+          null,
+          new ProjectIterator(allPacks, before, PackManager.getPackById)
+        )
+      }
+    )
   },
 
   getPackById(project_id, doc_id, pack_id, callback) {
