@@ -20,8 +20,6 @@ const RestoreManager = require('./RestoreManager')
 const ZipManager = require('./ZipManager')
 const logger = require('logger-sharelatex')
 const HealthChecker = require('./HealthChecker')
-const _ = require('underscore')
-const { pipeline } = require('stream')
 
 module.exports = HttpController = {
   flushDoc(req, res, next) {
@@ -208,11 +206,7 @@ module.exports = HttpController = {
   zipProject(req, res, next) {
     const { project_id } = req.params
     logger.log({ project_id }, 'exporting project history as zip file')
-    ZipManager.exportProject(project_id, function (err, outputStream) {
-      pipeline(outputStream, res, err => {
-        if (err) logger.error({ project_id, err }, 'zip pipeline error')
-      })
-    })
+    ZipManager.exportProject(project_id, res).then(next, next)
   },
 
   exportProject(req, res, next) {
