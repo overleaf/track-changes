@@ -437,7 +437,7 @@ module.exports = PackManager = {
             )
             .toArray((err, packs) => {
               packs.forEach(pack => {
-                docIdSet.add(pack.doc_id)
+                docIdSet.add(pack.doc_id.toString())
               })
               return cb()
             })
@@ -447,7 +447,7 @@ module.exports = PackManager = {
             .find({ project_id: ObjectId(project_id) })
             .toArray((err, indexes) => {
               indexes.forEach(index => {
-                docIdSet.add(index._id)
+                docIdSet.add(index._id.toString())
               })
               return cb()
             })

@@ -4,8 +4,12 @@ const DiffGenerator = require('./DiffGenerator')
 const DocumentUpdaterManager = require('./DocumentUpdaterManager')
 const DocstoreManager = require('./DocstoreManager')
 const PackManager = require('./PackManager')
-const yazl = require('yazl')
+const fs = require('fs')
 const util = require('util')
+const yazl = require('yazl')
+const { pipeline } = require('stream')
+const os = require('os')
+const path = require('path')
 
 // look in docstore or docupdater for the latest version of the document
 async function getLatestContent(projectId, docId, lastUpdateVersion) {
@@ -115,12 +119,32 @@ async function generateZip(projectId, zipfile) {
   zipfile.end()
 }
 
-async function exportProject(projectId) {
-  var zipfile = new yazl.ZipFile()
-  generateZip(projectId, zipfile) // generate zip file in background
-  return zipfile.outputStream
+async function exportProject(projectId, res) {
+  const tmpdir = await fs.promises.mkdtemp(await fs.promises.realpath(os.tmpdir()) + path.sep);
+  const tmpfile = path.join(tmpdir, 'export-project.zip')
+
+  try {
+    const outputStream = fs.createWriteStream(tmpfile)
+
+    const zipfile = new yazl.ZipFile()
+
+    // start generating the zip contents asynchronously (no await)
+    generateZip(projectId, zipfile).catch(error => {
+      throw error
+    })
+
+    // wait until the zip contents have been written to disk
+    await util.promisify(pipeline)(zipfile.outputStream, outputStream)
+
+    // send the zip file (NOTE: need to bind `this`)
+    await util.promisify(res.download).bind(res)(
+      tmpfile,
+      `${projectId}-track-changes.zip`
+    )
+  } finally {
+    // clean up the temp file
+    await fs.promises.rmdir(tmpdir, { recursive: true })
+  }
 }
 
-module.exports = {
-  exportProject: util.callbackify(exportProject),
-}
+module.exports = { exportProject }
